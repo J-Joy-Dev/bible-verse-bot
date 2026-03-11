@@ -64,9 +64,15 @@ def post_to_instagram():
         print(f"Error: {res}")
 
 if __name__ == "__main__":
-    if not ACCESS_TOKEN or not IG_USER_ID:
-        print("Missing Secrets! Check GitHub Settings.")
-    else:
+    import sys
+    
+    # Check if we are in "Create" mode or "Post" mode
+    mode = sys.argv[1] if len(sys.argv) > 1 else "all"
+
+    if mode == "create":
         v_text, v_ref = get_bible_verse()
         create_image(v_text, v_ref)
+        print("Image created for GitHub to upload.")
+        
+    elif mode == "post":
         post_to_instagram()
