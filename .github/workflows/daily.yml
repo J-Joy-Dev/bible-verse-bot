@@ -12,29 +12,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Updated to v5 (Supports Node 24)
       - name: Checkout Repo
         uses: actions/checkout@v5
 
-      # Updated to v6 (Supports Node 24)
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12' # Using a modern Python version
+          python-version: '3.12'
 
       - name: Install Dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Bot
+      # STEP 1: Create the image file
+      - name: Create Image
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
-        run: python main.py
+        run: python main.py create
 
-      - name: Keep Repo Alive
+      # STEP 2: Upload image to GitHub so Instagram can see the URL
+      - name: Commit and Push Image
         run: |
           git config --global user.name "BibleBot"
           git config --global user.email "bot@github.com"
           git add post.jpg
-          git commit -m "Update daily post image" || exit 0
+          git commit -m "Update daily post image" || echo "No changes to commit"
           git push
+
+      # STEP 3: Now tell Instagram to grab that image from the URL
+      - name: Post to Instagram
+        env:
+          FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python main.py post
