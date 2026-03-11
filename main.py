@@ -42,4 +42,62 @@ def create_image(verse_text, reference):
     lines = textwrap.wrap(verse_text, width=35)
     
     # Calculate vertical starting position
-    y_text
+    y_text = 450 - (len(lines) * 35) 
+    
+    # Draw Verse
+    for line in lines:
+        draw.text((540, y_text), line, fill="white", font=font_main, anchor="mm")
+        y_text += 70
+    
+    # Draw Reference
+    draw.text((540, y_text + 60), f"— {reference}", fill="#aaaaaa", font=font_ref, anchor="mm")
+    
+    # Save the file to the current directory
+    img.save("post.jpg")
+    print("✅ Image 'post.jpg' created successfully.")
+
+def post_to_instagram():
+    """Tells Instagram to fetch the image from your GitHub repository."""
+    repo = os.getenv("GITHUB_REPOSITORY")
+    if not repo:
+        print("❌ Error: GITHUB_REPOSITORY env variable not found.")
+        return
+
+    # Use a timestamp (?t=...) so Instagram doesn't show an old cached image
+    timestamp = int(time.time())
+    image_url = f"https://raw.githubusercontent.com/{repo}/main/post.jpg?t={timestamp}"
+    
+    print(f"Attempting to post image from: {image_url}")
+
+    # Step 1: Create Media Container
+    post_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media"
+    payload = {
+        'image_url': image_url,
+        'caption': f'Daily Scripture: #Bible #Faith #Christian',
+        'access_token': ACCESS_TOKEN
+    }
+    
+    response = requests.post(post_url, data=payload).json()
+    
+    if 'id' in response:
+        creation_id = response['id']
+        # Step 2: Publish the Container
+        publish_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish"
+        publish_res = requests.post(publish_url, data={
+            'creation_id': creation_id,
+            'access_token': ACCESS_TOKEN
+        }).json()
+        
+        print(f"🚀 Success! Posted to Instagram. ID: {publish_res.get('id')}")
+    else:
+        print(f"❌ Instagram API Error: {response}")
+
+if __name__ == "__main__":
+    # Check if secrets are present
+    if not ACCESS_TOKEN or not IG_USER_ID:
+        print("⚠️ Warning: FB_ACCESS_TOKEN or IG_USER_ID is missing.")
+    
+    # 1. Fetch and Create (Always run this when script is called)
+    print("Starting BibleBot Process...")
+    v_text, v_ref = get_bible_verse()
+    create_image(v_text, v_ref)
