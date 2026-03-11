@@ -1,49 +1,49 @@
 name: Daily Bible Post
+
 on:
   schedule:
-    - cron: '0 12 * * *' # Runs daily at 12:00 PM UTC
-  workflow_dispatch:
+    - cron: '0 12 * * *' # Runs daily at 12:00 UTC
+  workflow_dispatch:      # Allows you to run it manually for testing
+
 permissions:
-  contents: write
-# Opt into Node.js 24 for all steps in this workflow
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  contents: write         # Required to push the image back to your repo
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.10'
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: pip install requests Pillow
 
-      # STEP 1: Create the image file
+      # STEP 1: Generate the image locally on the runner
       - name: Create Image
+        run: python main.py
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
-        run: python main.py create
 
-      # STEP 2: Upload image to GitHub so Instagram can see the URL
+      # STEP 2: Upload the image to your GitHub repo
+      # This makes the image publicly accessible via raw.githubusercontent.com
       - name: Commit and Push Image
         run: |
           git config --global user.name "BibleBot"
           git config --global user.email "bot@github.com"
           git add post.jpg
-          git commit -m "Update daily post image" || echo "No changes to commit"
+          git commit -m "Update daily post image" || echo "No changes"
           git push
 
-      # STEP 3: Now tell Instagram to grab that image from the URL
+      # STEP 3: Now tell Instagram to fetch that new image
       - name: Post to Instagram
+        run: python -c "import main; main.post_to_instagram()"
         env:
           FB_ACCESS_TOKEN: ${{ secrets.FB_ACCESS_TOKEN }}
           IG_USER_ID: ${{ secrets.IG_USER_ID }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: python main.py post
